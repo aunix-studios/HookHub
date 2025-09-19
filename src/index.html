@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HookHub - Discord Webhook Manager</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f4f4; margin:0; padding:0; }
+  .container { max-width: 900px; margin: 50px auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  button { padding: 10px 20px; background: #7289da; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+  #user-info img { width: 80px; border-radius: 50%; margin-top: 10px; }
+  select, input, textarea { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>HookHub</h1>
+
+  <!-- Login button -->
+  <div id="login">
+    <button id="discord-login">Login with Discord</button>
+  </div>
+
+  <!-- User info -->
+  <div id="user-info" class="hidden">
+    <h2>Welcome, <span id="username"></span></h2>
+    <img id="avatar" src="" alt="Avatar">
+    <p>ID: <span id="user-id"></span></p>
+  </div>
+
+  <!-- Guild list -->
+  <div id="guilds-section" class="hidden">
+    <h3>Select a server</h3>
+    <select id="guild-select"></select>
+  </div>
+
+  <!-- Webhook message -->
+  <div id="webhook-section" class="hidden">
+    <h3>Send Message via Webhook</h3>
+    <textarea id="webhook-message" rows="4" placeholder="Type your message here..."></textarea>
+    <button id="send-webhook">Send Message</button>
+    <p id="status"></p>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = "1418445495940157442";
+const REDIRECT_URI = encodeURIComponent("https://hookhub.onrender.com/callback");
+const SCOPE = "identify guilds";
+
+// Discord login button
+document.getElementById("discord-login").onclick = () => {
+  window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}`;
+};
+
+// Load user info from localStorage
+const storedUser = localStorage.getItem("discord_user");
+const accessToken = localStorage.getItem("discord_access_token");
+
+if (storedUser && accessToken) {
+  const user = JSON.parse(storedUser);
+
+  // Show user info
+  document.getElementById("username").textContent = user.username + "#" + user.discriminator;
+  document.getElementById("avatar").src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+  document.getElementById("user-id").textContent = user.id;
+
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("user-info").classList.remove("hidden");
+  document.getElementById("guilds-section").classList.remove("hidden");
+  document.getElementById("webhook-section").classList.remove("hidden");
+
+  // Fetch guilds
+  fetch("https://discord.com/api/users/@me/guilds", {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+  .then(res => res.json())
+  .then(guilds => {
+    const select = document.getElementById("guild-select");
+    guilds.forEach(guild => {
+      // Only show guilds where user has MANAGE_GUILD permissions (0x20)
+      if ((guild.permissions & 0x20) === 0x20) {
+        const option = document.createElement("option");
+        option.value = guild.id;
+        option.textContent = guild.name;
+        select.appendChild(option);
+      }
+    });
+  })
+  .catch(err => console.error(err));
+}
+
+// Send webhook message
+document.getElementById("send-webhook").onclick = async () => {
+  const guildId = document.getElementById("guild-select").value;
+  const message = document.getElementById("webhook-message").value;
+  const status = document.getElementById("status");
+
+  if (!guildId || !message) {
+    status.textContent = "Please select a server and type a message.";
+    return;
+  }
+
+  try {
+    // Here you should call your backend endpoint to send webhook securely
+    // For demonstration, we’ll just show a message
+    status.textContent = `Message sent to server ID ${guildId}: "${message}"`;
+  } catch(err) {
+    console.error(err);
+    status.textContent = "Failed to send message.";
+  }
+};
+</script>
+
+</body>
+</html>

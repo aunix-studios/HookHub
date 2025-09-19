@@ -3,12 +3,12 @@ const axios = require("axios");
 const path = require("path");
 const app = express();
 
-// --- Discord Credentials ---
-const CLIENT_ID = "1418445495940157442";          
-const CLIENT_SECRET = "I78RQII2lkeNW6tG-D23Pq2lK213_z-T"; 
-const REDIRECT_URI = "https://hookhub.onrender.com/callback"; 
-
 app.use(express.json());
+
+// Discord credentials from environment variables (safer in production)
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "1418445495940157442";
+const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "I78RQII2lkeNW6tG-D23Pq2lK213_z-T";
+const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "https://hookhub.onrender.com/callback";
 
 // Serve frontend
 app.get("/", (req, res) => {
@@ -40,6 +40,7 @@ app.get("/callback", async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
+    // Save access token & user info to localStorage via frontend script
     res.send(`
       <script>
         localStorage.setItem("discord_access_token", "${accessToken}");
@@ -54,5 +55,6 @@ app.get("/callback", async (req, res) => {
   }
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -6,11 +6,14 @@
 <title>HookHub - Discord Webhook Manager</title>
 <style>
   body { font-family: Arial, sans-serif; background: #f4f4f4; margin:0; padding:0; }
-  .container { max-width: 900px; margin: 50px auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  .container { max-width: 900px; margin: 50px auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
   button { padding: 10px 20px; background: #7289da; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
   #user-info img { width: 80px; border-radius: 50%; margin-top: 10px; }
   select, input, textarea { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
   .hidden { display: none; }
+  .webhook-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f8f8f8; }
+  footer { text-align:center; margin-top:30px; font-size:14px; color:#555; }
+  footer a { color:#7289da; text-decoration:none; }
 </style>
 </head>
 <body>
@@ -18,7 +21,7 @@
 <div class="container">
   <h1>HookHub</h1>
 
-  <!-- Login button -->
+  <!-- Login -->
   <div id="login">
     <button id="discord-login">Login with Discord</button>
   </div>
@@ -30,19 +33,33 @@
     <p>ID: <span id="user-id"></span></p>
   </div>
 
-  <!-- Guild list -->
+  <!-- Guild selection -->
   <div id="guilds-section" class="hidden">
     <h3>Select a server</h3>
     <select id="guild-select"></select>
   </div>
 
-  <!-- Webhook message -->
-  <div id="webhook-section" class="hidden">
+  <!-- Webhooks management -->
+  <div id="webhooks-section" class="hidden">
+    <h3>Webhooks</h3>
+    <div id="webhooks-list"></div>
+    <input type="text" id="new-webhook-name" placeholder="Webhook Name">
+    <textarea id="new-webhook-message" rows="3" placeholder="Webhook Message"></textarea>
+    <button id="add-webhook">Add Webhook</button>
+  </div>
+
+  <!-- Send message -->
+  <div id="send-section" class="hidden">
     <h3>Send Message via Webhook</h3>
-    <textarea id="webhook-message" rows="4" placeholder="Type your message here..."></textarea>
-    <button id="send-webhook">Send Message</button>
+    <select id="webhook-select"></select>
+    <textarea id="send-message" rows="3" placeholder="Message content"></textarea>
+    <button id="send-message-btn">Send Message</button>
     <p id="status"></p>
   </div>
+
+  <footer>
+    Made by <a href="https://discord.gg/ff6Twsm93A" target="_blank">Aunix Studios</a>
+  </footer>
 </div>
 
 <script>
@@ -50,19 +67,17 @@ const CLIENT_ID = "1418445495940157442";
 const REDIRECT_URI = encodeURIComponent("https://hookhub.onrender.com/callback");
 const SCOPE = "identify guilds";
 
-// Discord login button
+// Login button
 document.getElementById("discord-login").onclick = () => {
   window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}`;
 };
 
-// Load user info from localStorage
+// Load user info
 const storedUser = localStorage.getItem("discord_user");
 const accessToken = localStorage.getItem("discord_access_token");
 
 if (storedUser && accessToken) {
   const user = JSON.parse(storedUser);
-
-  // Show user info
   document.getElementById("username").textContent = user.username + "#" + user.discriminator;
   document.getElementById("avatar").src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
   document.getElementById("user-id").textContent = user.id;
@@ -70,7 +85,8 @@ if (storedUser && accessToken) {
   document.getElementById("login").classList.add("hidden");
   document.getElementById("user-info").classList.remove("hidden");
   document.getElementById("guilds-section").classList.remove("hidden");
-  document.getElementById("webhook-section").classList.remove("hidden");
+  document.getElementById("webhooks-section").classList.remove("hidden");
+  document.getElementById("send-section").classList.remove("hidden");
 
   // Fetch guilds
   fetch("https://discord.com/api/users/@me/guilds", {
@@ -80,7 +96,6 @@ if (storedUser && accessToken) {
   .then(guilds => {
     const select = document.getElementById("guild-select");
     guilds.forEach(guild => {
-      // Only show guilds where user has MANAGE_GUILD permissions (0x20)
       if ((guild.permissions & 0x20) === 0x20) {
         const option = document.createElement("option");
         option.value = guild.id;
@@ -92,25 +107,34 @@ if (storedUser && accessToken) {
   .catch(err => console.error(err));
 }
 
-// Send webhook message
-document.getElementById("send-webhook").onclick = async () => {
-  const guildId = document.getElementById("guild-select").value;
-  const message = document.getElementById("webhook-message").value;
-  const status = document.getElementById("status");
+// Placeholder webhook management (replace with backend integration)
+document.getElementById("add-webhook").onclick = () => {
+  const name = document.getElementById("new-webhook-name").value;
+  const msg = document.getElementById("new-webhook-message").value;
+  if (!name || !msg) return alert("Fill name and message!");
+  const card = document.createElement("div");
+  card.className = "webhook-card";
+  card.innerHTML = `<strong>${name}</strong><p>${msg}</p>`;
+  document.getElementById("webhooks-list").appendChild(card);
 
-  if (!guildId || !message) {
-    status.textContent = "Please select a server and type a message.";
-    return;
-  }
+  // Add to send message select
+  const wSelect = document.getElementById("webhook-select");
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  wSelect.appendChild(opt);
 
-  try {
-    // Here you should call your backend endpoint to send webhook securely
-    // For demonstration, we’ll just show a message
-    status.textContent = `Message sent to server ID ${guildId}: "${message}"`;
-  } catch(err) {
-    console.error(err);
-    status.textContent = "Failed to send message.";
-  }
+  document.getElementById("new-webhook-name").value = "";
+  document.getElementById("new-webhook-message").value = "";
+};
+
+// Send message placeholder
+document.getElementById("send-message-btn").onclick = () => {
+  const webhookName = document.getElementById("webhook-select").value;
+  const message = document.getElementById("send-message").value;
+  if (!webhookName || !message) return alert("Select webhook and type message!");
+  document.getElementById("status").textContent = `Message sent via ${webhookName}: "${message}"`;
+  document.getElementById("send-message").value = "";
 };
 </script>
 
